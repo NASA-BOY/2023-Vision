@@ -1,3 +1,5 @@
+import math
+
 import cv2 as cv
 import numpy as np
 
@@ -21,10 +23,10 @@ def create_cones_contours():
     :return:
     """
 
-    lower = np.array([18, 100, 40])
+    lower = np.array([14, 100, 65])
     higher = np.array([35, 255, 255])
     cones = []
-    for i in range(1, 15):
+    for i in range(1, 25):
         path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\cones\\cone" + str(i) + ".jpg"
         cone = cv.imread(path)
 
@@ -62,5 +64,20 @@ def cone_shape_match(contour, cones_contours):
     return False
 
 
+def get_cone_angle(frame, contour):
+    """
 
+    :param frame: The frame to find angle in
+    :param contour: The contour to calculate its angle
+    :return: The angle between the cone and the camera horizontal axis
+    """
 
+    rows, cols = frame.shape[:2]
+    [vx, vy, x, y] = cv.fitLine(contour, cv.DIST_L2, 0, 0.01, 0.01)
+    lefty = int((-x * vy / vx) + y)
+    righty = int(((cols - x) * vy / vx) + y)
+    #cv.line(frame, (cols - 1, righty), (0, lefty), (255, 0, 0), 2)
+
+    m = (lefty - righty) / ((cols-1) - 0)
+    angle = math.degrees(math.atan(m - 0))
+    return angle

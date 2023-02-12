@@ -1,6 +1,7 @@
 import cv2
 import ovl
 import functios
+import numpy as np
 
 # Constants
 IMAGE_WIDTH = 640
@@ -26,7 +27,7 @@ straight_cones = functios.create_cones_contours()
 
 
 # Config the yellow range for detection
-yellow = ovl.Color([19, 90, 90], [35, 255, 255])
+yellow = ovl.Color([14, 100, 65], [36, 255, 255])
 
 # Set the ovl director
 director = ovl.Director(directing_function=ovl.xy_normalized_directions, target_selector=1, failed_detection=(-2, -2))
@@ -90,6 +91,10 @@ while True:
         print("match: ", ret)
         if ret:
             print("❤")
+
+        # Calculate cone angle
+        angle = functios.get_angle_using_line(frame, contour)
+        cv2.putText(frame, str(angle), (100, 100), fontFace=cv2.FONT_HERSHEY_SCRIPT_COMPLEX, fontScale=1, color=(0, 0, 255))
 
     # Get the x and y values of the distance of the target from the center of the camera
     directions = detect_cargo.get_directions(targets=targets, image=frame)
