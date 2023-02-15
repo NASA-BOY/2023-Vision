@@ -1,4 +1,5 @@
 import math
+import os
 
 import cv2 as cv
 import numpy as np
@@ -17,7 +18,7 @@ def max_contour(contours):
     return max_cnt
 
 
-def create_cones_contours():
+def create_cones_contours(path):
     """
     TODO: Add so it works with straight or tipped cone (with a parameter of a folder path)
     :return:
@@ -26,9 +27,11 @@ def create_cones_contours():
     lower = np.array([14, 100, 65])
     higher = np.array([35, 255, 255])
     cones = []
-    for i in range(1, 25):
-        path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\cones\\cone" + str(i) + ".jpg"
-        cone = cv.imread(path)
+
+    img_count = len([entry for entry in os.listdir(path) if os.path.isfile(os.path.join(path, entry))])
+    for i in range(1, img_count+1):
+        cone_path = path + "\\cone" + str(i) + ".jpg"
+        cone = cv.imread(cone_path)
 
         hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
         h, w = cone.shape[:2]
@@ -53,7 +56,7 @@ def cone_shape_match(contour, cones_contours):
 
     for cnt in cones_contours:
         ret = cv.matchShapes(contour, cnt, 1, 0.0)
-        if ret < 0.2:
+        if ret < 0.1:
             print("matchhh: ", ret)
             return True
 
@@ -80,4 +83,35 @@ def get_cone_angle(frame, contour):
 
     m = (lefty - righty) / ((cols-1) - 0)
     angle = math.degrees(math.atan(m - 0))
-    return angle
+    return int(angle)
+
+
+def get_cone_state(contour, frame, bad_cones, ok_cones):
+    """
+    :param contour: The cone contour to analyse its state
+    :param frame: The frame of which the cone contour is at
+    :param bad_cones: Bad (not base facing or straight) cones images contours
+    :param ok_cones: Ok(base facing the camera) cones images contours
+    :return:0 - ok cone
+            1 - straight standing cone
+            2 - tipped right cone
+            3 - tipped left cone
+            4 - tip facing the camera
+    """
+
+    if cone_shape_match(contour, ok_cones):
+        return 0, "OK"
+
+    elif cone_shape_match(contour, bad_cones):
+        angle = get_cone_angle(frame, contour)
+
+        if 70 < angle <= 90 or -90 <= angle < -70:
+            return 1, "straight"
+
+        elif -20 < angle < 0:
+            return 2, "right"
+
+        elif 0 <= angle < 20:
+            return 3, "left"
+
+    return -1, "none"

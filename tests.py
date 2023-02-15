@@ -3,11 +3,12 @@ import numpy as np
 import functios
 
 
-lower = np.array([14, 110, 65])
+lower = np.array([13, 110, 85])
 higher = np.array([35, 255, 255])
 cones = []
-path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\cones\\cone21.jpg"
+path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\bad_cones\\cone16.jpg"
 cone = cv.imread(path)
+
 
 hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
 h, w = cone.shape[:2]
@@ -16,6 +17,7 @@ contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE
 
 # Only get the biggest one
 cnt = functios.max_contour(contours)
+
 
 cv.drawContours(cone, cnt, -1, (0, 255, 0), 3)
 cv.imshow('hsv', hsv)
