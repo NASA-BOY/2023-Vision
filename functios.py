@@ -24,7 +24,7 @@ def create_cones_contours(path):
     :return:
     """
 
-    lower = np.array([14, 100, 65])
+    lower = np.array([15, 100, 65])
     higher = np.array([35, 255, 255])
     cones = []
 
@@ -35,7 +35,7 @@ def create_cones_contours(path):
 
         hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
         h, w = cone.shape[:2]
-        mask = cv.inRange(hsv, lower, higher);
+        mask = cv.inRange(hsv, lower, higher)
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         # Only get the biggest one
@@ -115,3 +115,55 @@ def get_cone_state(contour, frame, bad_cones, ok_cones):
             return 3, "left"
 
     return -1, "none"
+
+
+def cone_state_half(contour):
+    """
+    :param contour:
+    :return:
+    """
+
+    rect = cv.minAreaRect(contour)
+    box = cv.boxPoints(rect)
+    box = np.int0(box)
+
+    M = cv.moments(box)
+    bX = int(M["m10"] / M["m00"])
+
+
+    right_points = 0
+    left_points = 0
+
+    for i in range(len(contour)):
+        if contour[i][0][0] > bX:
+            right_points += 1
+        else:
+            left_points += 1
+
+
+    right_contour = np.zeros((right_points, 1, 2), dtype=np.int32)
+    left_contour = np.zeros((left_points, 1, 2), dtype=np.int32)
+    rcount = 0
+    lcount = 0
+
+    for i in range(len(contour)):
+        if contour[i][0][0] > bX:
+            right_contour[rcount][0] = contour[i][0]
+            rcount += 1
+        else:
+            left_contour[lcount][0] = contour[i][0]
+            lcount += 1
+
+    if left_contour == 0 or right_contour == 0:
+        return None, None
+
+    ratio = cv.contourArea(left_contour) / cv.contourArea(right_contour)
+
+    if ratio > 1.2:
+        return 2, "right"
+
+    elif ratio < 0.8:
+        return 3, "left"
+
+    else:
+        return 1, "straight"

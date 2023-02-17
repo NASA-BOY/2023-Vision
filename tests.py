@@ -6,13 +6,13 @@ import functios
 lower = np.array([13, 110, 85])
 higher = np.array([35, 255, 255])
 cones = []
-path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\bad_cones\\cone16.jpg"
+path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\bad_cones\\cone34.jpg"
 cone = cv.imread(path)
 
 
 hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
 h, w = cone.shape[:2]
-mask = cv.inRange(hsv, lower, higher);
+mask = cv.inRange(hsv, lower, higher)
 contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
 # Only get the biggest one
