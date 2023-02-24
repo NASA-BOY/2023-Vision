@@ -4,9 +4,6 @@ import os
 import cv2 as cv
 import numpy as np
 
-# Contours w/ greatest number of points
-# TODO max by area
-
 def max_contour(contours):
     max_val = 0
     max_cnt = None
@@ -36,6 +33,9 @@ def create_cones_contours(path):
         hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
         h, w = cone.shape[:2]
         mask = cv.inRange(hsv, lower, higher)
+        # kernel = np.ones((5, 5), np.uint8)
+        # mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+        # mask = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel)
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         # Only get the biggest one
@@ -46,9 +46,10 @@ def create_cones_contours(path):
     return cones
 
 
-def cone_shape_match(contour, cones_contours):
+def cone_shape_match(contour, cones_contours, match=0.1):
     """
 
+    :param match:
     :param contour:
     :param cones_contours:
     :return: The match number of the given contour and straight standing cone
@@ -56,7 +57,7 @@ def cone_shape_match(contour, cones_contours):
 
     for cnt in cones_contours:
         ret = cv.matchShapes(contour, cnt, 1, 0.0)
-        if ret < 0.1:
+        if ret < match:
             print("matchhh: ", ret)
             return True
 
@@ -69,77 +70,93 @@ def cone_shape_match(contour, cones_contours):
 
 def get_cone_angle(frame, contour):
     """
-
     :param frame: The frame to find angle in
-    :param contour: The contour to calculate its angle
+    :param contour: The cone contour to calculate its angle
     :return: The angle between the cone and the camera horizontal axis
     """
-
     rows, cols = frame.shape[:2]
     [vx, vy, x, y] = cv.fitLine(contour, cv.DIST_L2, 0, 0.01, 0.01)
     lefty = int((-x * vy / vx) + y)
     righty = int(((cols - x) * vy / vx) + y)
-    #cv.line(frame, (cols - 1, righty), (0, lefty), (255, 0, 0), 2)
+    # cv.line(frame, (cols - 1, righty), (0, lefty), (255, 0, 0), 2)
 
     m = (lefty - righty) / ((cols-1) - 0)
     angle = math.degrees(math.atan(m - 0))
     return int(angle)
 
 
-def get_cone_state(contour, frame, bad_cones, ok_cones):
+def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
     """
     :param contour: The cone contour to analyse its state
     :param frame: The frame of which the cone contour is at
-    :param bad_cones: Bad (not base facing or straight) cones images contours
-    :param ok_cones: Ok(base facing the camera) cones images contours
-    :return:0 - ok cone
-            1 - straight standing cone
-            2 - tipped right cone
-            3 - tipped left cone
+    :param straight_cones: straight cones image contours list
+    :param tipped_cones: tipped cones images contours list
+    :param ok_cones: OK for intake cones images contours (base facing the camera)
+    :return:-1 - none detected
+            0 - OK cone
+            1 - STRAIGHT standing cone
+            2 - cone base RIGHT
+            3 - cone base LEFT
             4 - tip facing the camera
+            TODO: the side of the tipped cone changes with rotated camera as on the robot
     """
+    print(cone_shape_match(contour, tipped_cones, 0.1))
 
-    if cone_shape_match(contour, ok_cones):
+    if cone_shape_match(contour, ok_cones, 0.01):
         return 0, "OK"
 
-    elif cone_shape_match(contour, bad_cones):
+    elif cone_shape_match(contour, tipped_cones, 0.1):
         angle = get_cone_angle(frame, contour)
+        print("ANGLE: ", angle)
 
-        if 70 < angle <= 90 or -90 <= angle < -70:
+        if (70 < angle <= 90 or -90 < angle < -70) and cone_shape_match(contour, straight_cones):
             return 1, "straight"
 
-        elif -20 < angle < 0:
-            return 2, "right"
+        else:
+            return tipped_cone_side(contour)
 
-        elif 0 <= angle < 20:
-            return 3, "left"
+
+        # if 70 < angle <= 90 or -90 <= angle < -70:
+        #     return 1, "straight"
+        #
+        # elif -20 < angle < 0:
+        #     return 2, "right"
+        #
+        # elif 0 <= angle < 20:
+        #     return 3, "left"
 
     return -1, "none"
 
 
-def cone_state_half(contour):
+def tipped_cone_side(contour):
     """
-    :param contour:
-    :return:
+    :param contour: The cone contour to analyse its status
+    :return: The given cone status
     """
+
+    # angle = get_cone_angle(frame, contour)
+    #
+    # if 70 < angle <= 90 or -90 < angle < -70:
+    #     return 1, "straight"
 
     rect = cv.minAreaRect(contour)
     box = cv.boxPoints(rect)
     box = np.int0(box)
 
     M = cv.moments(box)
-    bX = int(M["m10"] / M["m00"])
-
+    cX = int(M["m10"] / M["m00"])
 
     right_points = 0
     left_points = 0
 
     for i in range(len(contour)):
-        if contour[i][0][0] > bX:
+        if contour[i][0][0] > cX:
             right_points += 1
         else:
             left_points += 1
 
+    if left_points == 0 or right_points == 0:
+        return None, None
 
     right_contour = np.zeros((right_points, 1, 2), dtype=np.int32)
     left_contour = np.zeros((left_points, 1, 2), dtype=np.int32)
@@ -147,23 +164,23 @@ def cone_state_half(contour):
     lcount = 0
 
     for i in range(len(contour)):
-        if contour[i][0][0] > bX:
+        if contour[i][0][0] > cX:
             right_contour[rcount][0] = contour[i][0]
             rcount += 1
         else:
             left_contour[lcount][0] = contour[i][0]
             lcount += 1
 
-    if left_contour == 0 or right_contour == 0:
-        return None, None
+    if cv.contourArea(right_contour) == 0:
+        return 2, "right"
 
     ratio = cv.contourArea(left_contour) / cv.contourArea(right_contour)
 
-    if ratio > 1.2:
+    if ratio > 1.1:
         return 2, "right"
 
-    elif ratio < 0.8:
+    elif ratio < 0.9:
         return 3, "left"
 
     else:
-        return 1, "straight"
+        return 0, "OKK"
