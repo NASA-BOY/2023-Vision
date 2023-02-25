@@ -105,15 +105,14 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
     if cone_shape_match(contour, ok_cones, 0.01):
         return 0, "OK"
 
-    elif cone_shape_match(contour, tipped_cones, 0.1):
-        angle = get_cone_angle(frame, contour)
-        print("ANGLE: ", angle)
+    angle = get_cone_angle(frame, contour)
+    print("ANGLE: ", angle)
 
-        if (70 < angle <= 90 or -90 < angle < -70) and cone_shape_match(contour, straight_cones):
-            return 1, "straight"
+    if (70 < angle <= 90 or -90 < angle < -70) and cone_shape_match(contour, straight_cones):
+        return 1, "straight"
 
-        else:
-            return tipped_cone_side(contour)
+    if cone_shape_match(contour, tipped_cones, 0.1):
+        return tipped_cone_side(contour)
 
 
         # if 70 < angle <= 90 or -90 <= angle < -70:
