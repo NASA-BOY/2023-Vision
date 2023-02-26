@@ -1,6 +1,6 @@
 import os
 
-os.chdir('C:\\Users\\itayo\\Charged_Up_2023_Vision\\tipped_cones')
+os.chdir('C:\\Users\\itayo\\Charged_Up_2023_Vision\\straight_cones')
 print(os.getcwd())
 
 for count, f in enumerate(os.listdir()):

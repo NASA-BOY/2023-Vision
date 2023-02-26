@@ -1,5 +1,7 @@
 import cv2
 import ovl
+
+import custom_filters
 import functios
 import numpy as np
 
@@ -21,7 +23,7 @@ camera_config = ovl.CameraConfiguration({
 })
 
 # Config the camera port, dimensions and exposure
-camera = ovl.Camera(1)
+camera = ovl.Camera(0)
 camera.configure_camera(camera_config)
 #camera.set_exposure(-7)
 
@@ -36,6 +38,8 @@ straight_cones = functios.create_cones_contours(STRAIGHT_CONES_PATH)
 yellow = ovl.Color([14, 120, 90], [33, 255, 255])
 # ROBOT CAM yellow = ovl.Color([18, 140, 50], [36, 255, 255])
 
+# Config the purple range for cube detection
+purple = ovl.Color([120, 90, 65], [150, 255, 255])
 
 # Set the ovl director
 director = ovl.Director(directing_function=ovl.xy_normalized_directions, target_selector=1, failed_detection=(-2, -2))
@@ -43,40 +47,22 @@ director = ovl.Director(directing_function=ovl.xy_normalized_directions, target_
 # Set the Morphological functions
 # morph = [ovl.morphological_functions.erosion(), ovl.morphological_functions.dilation(iterations=1), ovl.morphological_functions.erosion(iterations=1)]
 
-@ovl.predicate_target_filter
-def shape_filter(contour):
-    return functios.cone_shape_match(contour, tipped_cones) or functios.cone_shape_match(contour, ok_cones) \
-           or functios.cone_shape_match(contour, straight_cones)
 
-@ovl.image_filter
-def close_open(thresh):
-    kernel = np.ones((5, 5), np.uint8)
-    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-    return cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-
-def dialation(thresh):
-    # apply dilation on src image
-    kernel = np.ones((5, 5), np.uint8)
-    return cv2.dilate(thresh, kernel, iterations=2)
-
-
-# Set the desired target filter
+# Cone filters and vision configurations
 cone_filters = [ovl.percent_area_filter(minimal_percent=1),
                 ovl.area_sort(),
-                shape_filter()]
-
+                custom_filters.shape_filter(cones=[tipped_cones, ok_cones, straight_cones])]
 
 # Apply the threshold(Color Mask), director and target filters on the camera feed using ovl vision
 detect_cone = ovl.Vision(camera=camera,
                          threshold=yellow,
                          target_filters=cone_filters,
-                         # image_filters=[ovl.gaussian_blur()],
-                         morphological_functions=[close_open()],
+                         image_filters=[ovl.sharpen_image(), ovl.adaptive_brightness()],  # Sharpen really helps for some reason
+                         morphological_functions=[custom_filters.close_open()],
                          director=director, )
 
-# Config the purple range for cube detection
-purple = ovl.Color([130, 100, 75], [143, 255, 255])
 
+# Cube filters and vision configurations
 cube_filters = [ovl.percent_area_filter(minimal_percent=40)]
 
 detect_cube = ovl.Vision(camera=camera,
@@ -84,17 +70,19 @@ detect_cube = ovl.Vision(camera=camera,
                          target_filters=cube_filters,
                          director=director)
 
-
 while True:
 
     frame = detect_cube.get_image()
     #frame = cv2.rotate(frame, cv2.ROTATE_180) NOT NECESSARY
 
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, purple.low, purple.high)
+    cv2.imshow("PURP", mask)
+
     cubes, _ = detect_cube.detect(frame)
     if len(cubes) > 0:
-        # robot.send(1, "game_piece")
-        cv2.putText(frame, "CUBE", (100, 20), fontFace=cv2.FONT_HERSHEY_SCRIPT_COMPLEX, fontScale=1,
-                    color=(255, 0, 0))
+        # robot.send(1, "game_piece")  # 0 for cone || 1 for cube
+        print("CUBE")
 
     else:
         # Get the frame from the camera and find the targets using the vision set above
@@ -102,6 +90,10 @@ while True:
 
         targets, frame = detect_cone.detect(frame)
 
+        # Keep only the biggest target and delete the rest (We only want to target the closest cargo)
+        targets = targets[:1]
+
+        # ---TEMP Only for testing---
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, yellow.low, yellow.high)
         kernel = np.ones((5, 5), np.uint8)
@@ -114,30 +106,29 @@ while True:
         cv2.imshow("new", new_mask)
         cv2.imshow("mask", mask)
 
-        # Keep only the biggest target and delete the rest (We only want to target the closest cargo)
-        targets = targets[:1]
-
         # Display the video with the target marked (This is temp and only for testings, should delete when finished)
-        ovl.display_contours(frame, targets, color=(0, 255, 0), display_loop=True)
+        ovl.display_contours(frame, targets, color=(0, 255, 0), display_loop=True)  # Only for testing
 
         cX = None
         cY = None
         bX = None
         bY = None
 
-        # Calculate the contours area
+        # ----TEMP End----
+
         for contour in targets:
 
+            # Calculate the cone contour percent area
             image_size = IMAGE_WIDTH * IMAGE_HEIGHT
             target_area = cv2.contourArea(contour)
             percent_area = target_area / image_size * 100  # #TODO: check it
+            print(percent_area)  # Only for testing
 
-            print(percent_area)
-
-            # status = functios.get_cone_state(contour, frame, bad_cones, ok_cones)
+            # Get the cone status - straight, tipped(L/R) and OK for intake
             status = functios.get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones)
 
-            cv2.putText(frame, status[1], (100, 20), fontFace=cv2.FONT_HERSHEY_SCRIPT_COMPLEX, fontScale=1, color=(255, 0, 0))
+            # ---TEMP Only for testing---
+            cv2.putText(frame, status[1], (100, 20), fontFace=cv2.FONT_HERSHEY_SCRIPT_COMPLEX, fontScale=1, color=(255, 0, 0))  # Only for testing
 
             # Rectangle
             rect = cv2.minAreaRect(contour)
@@ -148,7 +139,13 @@ while True:
             bX = int(M["m10"] / M["m00"])
             bY = int(M["m01"] / M["m00"])
 
+            # compute the center of the contour
+            M = cv2.moments(contour)
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+
             print("💥POINTS💥 ", status)
+            # ----TEMP End----
 
             # cv2.drawContours(frame, [box], 0, (0, 0, 255), 2)
 
@@ -164,18 +161,14 @@ while True:
 
             # cv2.drawContours(frame, triangle, 0, (0, 0, 255), 2)
 
-            # compute the center of the contour
-            M = cv2.moments(contour)
-            cX = int(M["m10"] / M["m00"])
-            cY = int(M["m01"] / M["m00"])
-
 
             # Calculate cone angle
             # angle = functios.get_cone_angle(frame, contour)
             # cv2.putText(frame, str(angle), (200, 100), fontFace=cv2.FONT_HERSHEY_SCRIPT_COMPLEX, fontScale=1, color=(0, 0, 255))
 
-        cv2.circle(frame, (cX, cY), 7, (0, 0, 255), -1)
-        cv2.circle(frame, (bX, bY), 7, (255, 0, 0), -1)
+        cv2.circle(frame, (cX, cY), 7, (0, 0, 255), -1)  # Only for testing
+        cv2.circle(frame, (bX, bY), 7, (255, 0, 0), -1)  # Only for testing
+
 
         # Get the x and y values of the distance of the target from the center of the camera
         directions = detect_cone.get_directions(targets=targets, image=frame)
@@ -186,8 +179,16 @@ while True:
         # Prints
         print("Target directions", directions)
 
-        # Send the x and y value and target area from above to the networktable under vision table
+        # Send 1 as for cone detected
+        #robot.send(0, "game_piece") # 0 for cone || 1 for cube
+
+        # Send the cone status as described in functions.get_cone_state
+        #robot.send(status[0], "status")
+
+        # Send the x and y value of the detected cone
         # The value of x and y are so that you put the value directly to the motor speed (-1 to 1)
         #robot.send(x, "target_x")
         #robot.send(y, "target_y")
+
+        # Send the percent area of the cone
         #robot.send(target_area, "target_area") #TODO change to area percentage
