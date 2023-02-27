@@ -33,9 +33,6 @@ def create_cones_contours(path):
         hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
         h, w = cone.shape[:2]
         mask = cv.inRange(hsv, lower, higher)
-        # kernel = np.ones((5, 5), np.uint8)
-        # mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
-        # mask = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel)
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         # Only get the biggest one
@@ -58,12 +55,7 @@ def cone_shape_match(contour, cones_contours, match=0.1):
     for cnt in cones_contours:
         ret = cv.matchShapes(contour, cnt, 1, 0.0)
         if ret < match:
-            print("matchhh: ", ret)
             return True
-
-    # cv.drawContours(cone1, bc, -1, (0, 255, 0), 3)
-    # cv.imshow('hsv', hsv)
-    # cv.imshow('mask', mask)
 
     return False
 
@@ -78,7 +70,6 @@ def get_cone_angle(frame, contour):
     [vx, vy, x, y] = cv.fitLine(contour, cv.DIST_L2, 0, 0.01, 0.01)
     lefty = int((-x * vy / vx) + y)
     righty = int(((cols - x) * vy / vx) + y)
-    # cv.line(frame, (cols - 1, righty), (0, lefty), (255, 0, 0), 2)
 
     m = (lefty - righty) / ((cols-1) - 0)
     angle = math.degrees(math.atan(m - 0))
@@ -100,13 +91,11 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
             4 - tip facing the camera
             TODO: the side of the tipped cone changes with rotated camera as on the robot
     """
-    print(cone_shape_match(contour, tipped_cones, 0.1))
 
     if cone_shape_match(contour, ok_cones, 0.01):
         return 0, "OK"
 
     angle = get_cone_angle(frame, contour)
-    print("ANGLE: ", angle)
 
     if cone_shape_match(contour, straight_cones):
         if 70 < angle <= 90 or -90 < angle < -70:
@@ -116,16 +105,6 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
     if cone_shape_match(contour, tipped_cones, 0.1):
         return tipped_cone_side(contour)
 
-
-        # if 70 < angle <= 90 or -90 <= angle < -70:
-        #     return 1, "straight"
-        #
-        # elif -20 < angle < 0:
-        #     return 2, "right"
-        #
-        # elif 0 <= angle < 20:
-        #     return 3, "left"
-
     return -1, "none"
 
 
@@ -134,12 +113,6 @@ def tipped_cone_side(contour):
     :param contour: The cone contour to analyse its status
     :return: The given cone status
     """
-
-    # angle = get_cone_angle(frame, contour)
-    #
-    # if 70 < angle <= 90 or -90 < angle < -70:
-    #     return 1, "straight"
-
     rect = cv.minAreaRect(contour)
     box = cv.boxPoints(rect)
     box = np.int0(box)
