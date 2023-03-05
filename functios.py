@@ -1,5 +1,6 @@
 import math
 import os
+from pathlib import Path
 
 import cv2 as cv
 import numpy as np
@@ -15,7 +16,7 @@ def max_contour(contours):
     return max_cnt
 
 
-def create_cones_contours(path):
+def create_cones_contours(path: Path):
     """
     TODO: Add so it works with straight or tipped cone (with a parameter of a folder path)
     :return:
@@ -25,10 +26,9 @@ def create_cones_contours(path):
     higher = np.array([35, 255, 255])
     cones = []
 
-    img_count = len([entry for entry in os.listdir(path) if os.path.isfile(os.path.join(path, entry))])
-    for i in range(1, img_count+1):
-        cone_path = path + "\\cone" + str(i) + ".jpg"
-        cone = cv.imread(cone_path)
+    for image in path.glob("*.jpg"):
+        print("Current Image:", image.resolve())
+        cone = cv.imread(str(image.resolve()))
 
         hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
         h, w = cone.shape[:2]
