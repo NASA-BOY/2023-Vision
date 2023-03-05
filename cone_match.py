@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import ovl
 
@@ -8,9 +10,9 @@ import functios
 IMAGE_WIDTH = 320
 IMAGE_HEIGHT = 240
 target_area = 0
-TIPPED_CONES_PATH = "C:\\Users\\itayo\\2023-Vision\\tipped_cones"
-OK_CONES_PATH = "C:\\Users\\itayo\\2023-Vision\\ok_cones"
-STRAIGHT_CONES_PATH = "C:\\Users\\itayo\\2023-Vision\\straight_cones"
+TIPPED_CONES_PATH = os.path.join(os.getcwd(), "tipped_cones")
+OK_CONES_PATH = os.path.join(os.getcwd(), "ok_cones")
+STRAIGHT_CONES_PATH = os.path.join(os.getcwd(), "straight_cones")
 
 # Config the robot's network table
 robot = ovl.NetworkTablesConnection("10.19.37.1")
