@@ -16,13 +16,15 @@ IMAGE_HEIGHT = 240
 target_area = 0
 ROOT_DIR: pathlib.PosixPath = pathlib.PosixPath("/home/pi/vision/")
 TIPPED_CONES_PATH = ROOT_DIR.joinpath("../../Downloads/kevin_vision/tipped_cones")
-print(ROOT_DIR)
 OK_CONES_PATH = ROOT_DIR / "ok_cones/"
 STRAIGHT_CONES_PATH = ROOT_DIR / "straight_cones/"
 
+game_piece = 0  # 0 for cone || 1 for cube
+percent_area = 0  # percent area of the camera frame of the cone/cube
+
 # Config the robot's network table
 # robot = ovl.NetworkTablesConnection("10.19.37.1")
-NetworkTables.initialize("10.19.37.1")
+NetworkTables.initialize("10.19.37.2")
 # Config the camera size
 camera_config = ovl.CameraConfiguration({
     ovl.CameraProperties.IMAGE_WIDTH: IMAGE_WIDTH,
@@ -35,7 +37,6 @@ camera = cv2.VideoCapture(0)
 # camera.get_image()
 
 # Create all the cones images contours lists
-print(f"Tipped cones path:", TIPPED_CONES_PATH)
 tipped_cones = functios.create_cones_contours(TIPPED_CONES_PATH)
 ok_cones = functios.create_cones_contours(OK_CONES_PATH)
 straight_cones = functios.create_cones_contours(STRAIGHT_CONES_PATH)
@@ -51,7 +52,7 @@ purple = ovl.Color([120, 90, 65], [150, 255, 255])
 director = ovl.Director(directing_function=ovl.xy_normalized_directions, target_selector=1, failed_detection=(-2, -2))
 
 # Cone filters and vision configurations
-cone_filters = [ovl.percent_area_filter(minimal_percent=1),
+cone_filters = [ovl.percent_area_filter(minimal_percent=4),
                 ovl.area_sort(),
                 custom_filters.shape_filter(cones=[tipped_cones, ok_cones, straight_cones])]
 
@@ -65,7 +66,7 @@ detect_cone = ovl.Vision(camera=camera,
                          director=director, )
 
 # Cube filters and vision configurations
-cube_filters = [ovl.percent_area_filter(minimal_percent=40)]
+cube_filters = [ovl.percent_area_filter(minimal_percent=35)]
 
 detect_cube = ovl.Vision(camera=camera,
                          threshold=purple,
@@ -78,8 +79,7 @@ while True:
 
     cubes, _ = detect_cube.detect(frame)
     if len(cubes) > 0:
-        pass
-        # robot.set(1, "game_piece")  # 0 for cone || 1 for cube
+        game_piece = 1  # 0 for cone || 1 for cube
 
     else:
         # Get the frame from the camera and find the targets using the vision set above
@@ -89,7 +89,7 @@ while True:
 
         # Keep only the biggest target and delete the rest (We only want to target the closest cargo)
         targets = targets[:1]
-        status = (-1, "none")
+        status = functios.ConeSkew.no_cone
         for contour in targets:
             # Calculate the cone contour percent area
             image_size = IMAGE_WIDTH * IMAGE_HEIGHT
@@ -104,19 +104,20 @@ while True:
 
         x = directions[0]
         y = directions[1]
-        # print("Table", robot.get_table(robot.table_name))
-        # Send 1 as for cone detected
-        table = NetworkTables.getTable("vision")  # 0 for cone || 1 for cube
 
-        if (cone_status := status[0]):
-            # Send the cone status as described in functions.get_cone_state
-            table.putValue("status", status[0])
-        print("Current cone status", status[1])
+        # ======NETWORKTABLE=====
+        table = NetworkTables.getTable("vision")
+
+        # Send the game piece type detected
+        table.putValue("game_piece", game_piece)  # 0 for cone || 1 for cube
+
+        # Send the cone status as described in functions.get_cone_state
+        table.putValue("cone_state", status)
         #
-        # # Send the x and y value of the detected cone
-        # # The value of x and y are so that you put the value directly to the motor speed (-1 to 1)
-        # robot.set(x, "target_x")
-        # robot.set(y, "target_y")
+        # Send the x and y value of the detected cone
+        # The value of x and y are so that you put the value directly to the motor speed (-1 to 1)
+        table.putValue("target_x", x)
+        table.putValue("target_y", y)
         #
-        # # Send the percent area of the cone
-        # robot.set(percent_area, "target_area")
+        # Send the percent area of the cone
+        table.putValue("target_area", percent_area)

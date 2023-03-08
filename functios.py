@@ -16,10 +16,21 @@ class ConeSkew(int, Enum):
     tip_to_camera = 4
 
 
+def max_contour(contours):
+    max_val = 0
+    max_cnt = None
+    for contour in contours:
+        if cv.contourArea(contour) > max_val:
+            max_cnt = contour
+            max_val = cv.contourArea(contour)
+
+    return max_cnt
+
+
 def create_cones_contours(path: Path):
     """
-    TODO: Add so it works with straight or tipped cone (with a parameter of a folder path)
-    :return:
+    :param path: Path of the cone photos folder
+    :return: A list of the given folder path cone contours
     """
 
     lower = np.array([15, 100, 65])
@@ -35,7 +46,7 @@ def create_cones_contours(path: Path):
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         # Only get the biggest one
-        largest_contour = next(ovl.area_sort()(contours)[:1], None)
+        largest_contour = max_contour(contours)
         cones.append(largest_contour)
 
     return cones
@@ -43,13 +54,11 @@ def create_cones_contours(path: Path):
 
 def cone_shape_match(contour, cones_contours, match=0.1):
     """
-
-    :param match:
-    :param contour:
-    :param cones_contours:
+    :param match: The match compare number
+    :param contour: The contour to apply shape match on
+    :param cones_contours: List of cones contours list
     :return: The match number of the given contour and straight standing cone
     """
-
     for cnt in cones_contours:
         ret = cv.matchShapes(contour, cnt, 1, 0.0)
         if ret < match:
@@ -87,7 +96,7 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
             2 - cone base RIGHT
             3 - cone base LEFT
             4 - tip facing the camera
-            TODO: the side of the tipped cone changes with rotated camera as on the robot
+            BEWARE: the side of the tipped cone changes with rotated camera as on the robot
     """
 
     if cone_shape_match(contour, ok_cones, 0.01):
@@ -103,7 +112,7 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
     if cone_shape_match(contour, tipped_cones, 0.1):
         return tipped_cone_side(contour)
 
-    return -1, "none"
+    return ConeSkew.no_cone
 
 
 def tipped_cone_side(contour):
@@ -114,8 +123,7 @@ def tipped_cone_side(contour):
     rect = cv.minAreaRect(contour)
     box = cv.boxPoints(rect)
     box = np.int0(box)
-
-    cX = ovl.contour_center(box)
+    cX = int(ovl.contour_center(box)[0])
 
     right_points = 0
     left_points = 0
