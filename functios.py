@@ -1,9 +1,10 @@
 import math
-import os
+from enum import Enum
 from pathlib import Path
 
 import cv2 as cv
 import numpy as np
+import ovl
 
 def max_contour(contours):
     max_val = 0
@@ -13,7 +14,13 @@ def max_contour(contours):
             max_cnt = contour
             max_val = cv.contourArea(contour)
 
-    return max_cnt
+class ConeSkew(int, Enum):
+    no_cone = -1
+    base_to_camera = 0
+    standing = 1
+    base_right = 2
+    base_left = 3
+    tip_to_camera = 4
 
 
 def create_cones_contours(path: Path):
@@ -71,7 +78,7 @@ def get_cone_angle(frame, contour):
     lefty = int((-x * vy / vx) + y)
     righty = int(((cols - x) * vy / vx) + y)
 
-    m = (lefty - righty) / ((cols-1) - 0)
+    m = (lefty - righty) / ((cols - 1) - 0)
     angle = math.degrees(math.atan(m - 0))
     return int(angle)
 
@@ -93,13 +100,13 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
     """
 
     if cone_shape_match(contour, ok_cones, 0.01):
-        return 0, "OK"
+        return ConeSkew.base_to_camera
 
     angle = get_cone_angle(frame, contour)
 
     if cone_shape_match(contour, straight_cones):
         if 70 < angle <= 90 or -90 < angle < -70:
-            return 1, "straight"
+            return ConeSkew.standing
         return tipped_cone_side(contour)
 
     if cone_shape_match(contour, tipped_cones, 0.1):
@@ -117,8 +124,7 @@ def tipped_cone_side(contour):
     box = cv.boxPoints(rect)
     box = np.int0(box)
 
-    M = cv.moments(box)
-    cX = int(M["m10"] / M["m00"])
+    cX = ovl.contour_center(box)
 
     right_points = 0
     left_points = 0
@@ -146,15 +152,15 @@ def tipped_cone_side(contour):
             lcount += 1
 
     if cv.contourArea(right_contour) == 0:
-        return 2, "right"
+        return ConeSkew.base_right
 
     ratio = cv.contourArea(left_contour) / cv.contourArea(right_contour)
 
     if ratio > 1.1:
-        return 2, "right"
+        return ConeSkew.base_right
 
     elif ratio < 0.9:
-        return 3, "left"
+        return ConeSkew.base_left
 
     else:
-        return 0, "OKK"
+        return ConeSkew.base_to_camera
