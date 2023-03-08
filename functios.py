@@ -6,13 +6,6 @@ import cv2 as cv
 import numpy as np
 import ovl
 
-def max_contour(contours):
-    max_val = 0
-    max_cnt = None
-    for contour in contours:
-        if cv.contourArea(contour) > max_val:
-            max_cnt = contour
-            max_val = cv.contourArea(contour)
 
 class ConeSkew(int, Enum):
     no_cone = -1
@@ -34,7 +27,6 @@ def create_cones_contours(path: Path):
     cones = []
 
     for image in path.glob("*.jpg"):
-        print("Current Image:", image.resolve())
         cone = cv.imread(str(image.resolve()))
 
         hsv = cv.cvtColor(cone, cv.COLOR_BGR2HSV)
@@ -43,9 +35,8 @@ def create_cones_contours(path: Path):
         contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
         # Only get the biggest one
-        cnt = max_contour(contours)
-
-        cones.append(cnt)
+        largest_contour = next(ovl.area_sort()(contours)[:1], None)
+        cones.append(largest_contour)
 
     return cones
 
