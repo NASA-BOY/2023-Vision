@@ -15,7 +15,7 @@ IMAGE_WIDTH = 320
 IMAGE_HEIGHT = 240
 target_area = 0
 ROOT_DIR: pathlib.PosixPath = pathlib.PosixPath("/home/pi/vision/")
-TIPPED_CONES_PATH = ROOT_DIR.joinpath("../../Downloads/kevin_vision/tipped_cones")
+TIPPED_CONES_PATH = ROOT_DIR / "tipped_cones/"
 OK_CONES_PATH = ROOT_DIR / "ok_cones/"
 STRAIGHT_CONES_PATH = ROOT_DIR / "straight_cones/"
 

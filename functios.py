@@ -98,13 +98,11 @@ def get_cone_state(contour, frame, straight_cones, tipped_cones, ok_cones):
             4 - tip facing the camera
             BEWARE: the side of the tipped cone changes with rotated camera as on the robot
     """
-
     if cone_shape_match(contour, ok_cones, 0.01):
         return ConeSkew.base_to_camera
 
-    angle = get_cone_angle(frame, contour)
-
-    if cone_shape_match(contour, straight_cones):
+    elif cone_shape_match(contour, straight_cones):
+        angle = get_cone_angle(frame, contour)
         if 70 < angle <= 90 or -90 < angle < -70:
             return ConeSkew.standing
         return tipped_cone_side(contour)
@@ -123,7 +121,12 @@ def tipped_cone_side(contour):
     rect = cv.minAreaRect(contour)
     box = cv.boxPoints(rect)
     box = np.int0(box)
-    cX = int(ovl.contour_center(box)[0])
+
+    # Get the center of the bounding rectangle
+    M = cv.moments(box)
+    cX = int(M["m10"] / M["m00"])
+
+    # cX = int(ovl.contour_center(box)[0])
 
     right_points = 0
     left_points = 0
