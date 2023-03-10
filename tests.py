@@ -6,7 +6,7 @@ import functios
 lower = np.array([13, 110, 85])
 higher = np.array([35, 255, 255])
 cones = []
-path = "C:\\Users\\itayo\\Charged_Up_2023_Vision\\tipped_cones\\cone38.jpg"
+path = "C:\\Users\\itayo\\2023-Vision\\tipped_cones\\cone84.jpg"
 cone = cv.imread(path)
 
 
