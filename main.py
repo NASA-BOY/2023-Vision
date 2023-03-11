@@ -19,7 +19,7 @@ TIPPED_CONES_PATH = ROOT_DIR / "tipped_cones/"
 OK_CONES_PATH = ROOT_DIR / "ok_cones/"
 STRAIGHT_CONES_PATH = ROOT_DIR / "straight_cones/"
 
-game_piece = 0  # 0 for cone || 1 for cube
+game_piece = -1  # 0 for cone || 1 for cube
 percent_area = 0  # percent area of the camera frame of the cone/cube
 
 # Config the robot's network table
@@ -78,10 +78,13 @@ while True:
     # frame = cv2.rotate(frame, cv2.ROTATE_180) NOT NECESSARY
 
     cubes, _ = detect_cube.detect(frame)
+    print(len(cubes))
     if len(cubes) > 0:
         game_piece = 1  # 0 for cone || 1 for cube
 
     else:
+
+        game_piece = 0  # 0 for cone || 1 for cube
         # Get the frame from the camera and find the targets using the vision set above
         frame = detect_cone.get_image()
 
