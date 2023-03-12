@@ -41,7 +41,7 @@ yellow = ovl.Color([14, 120, 90], [33, 255, 255])
 # ROBOT CAM yellow = ovl.Color([18, 140, 50], [36, 255, 255])
 
 # Config the purple range for cube detection
-purple = ovl.Color([120, 90, 65], [150, 255, 255])
+purple = ovl.Color([110, 90, 65], [150, 255, 255])
 
 # Set the ovl director
 director = ovl.Director(directing_function=ovl.xy_normalized_directions, target_selector=1, failed_detection=(-2, -2))
