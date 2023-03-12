@@ -52,6 +52,31 @@ def create_cones_contours(path: Path):
     return cones
 
 
+def create_cubes_contours(path: Path):
+    """
+    :param path: Path of the cone photos folder
+    :return: A list of the given folder path cone contours
+    """
+
+    lower = np.array([120, 90, 65])
+    higher = np.array([180, 255, 255])
+    cubes = []
+
+    for image in path.glob("*.jpg"):
+        cube = cv.imread(str(image.resolve()))
+
+        hsv = cv.cvtColor(cube, cv.COLOR_BGR2HSV)
+        h, w = cube.shape[:2]
+        mask = cv.inRange(hsv, lower, higher)
+        contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+        # Only get the biggest one
+        largest_contour = max_contour(contours)
+        cubes.append(largest_contour)
+
+    return cubes
+
+
 def cone_shape_match(contour, cones_contours, match=0.1):
     """
     :param match: The match compare number
