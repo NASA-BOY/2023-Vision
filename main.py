@@ -15,6 +15,7 @@ IMAGE_WIDTH = 320
 IMAGE_HEIGHT = 240
 target_area = 0
 directions = (-2, -2)
+game_piece = -1  # 0 for cone || 1 for cube
 status = functios.ConeSkew.no_cone
 ROOT_DIR: pathlib.PosixPath = pathlib.PosixPath("/home/pi/vision/")
 TIPPED_CONES_PATH = ROOT_DIR / "tipped_cones/"
@@ -47,7 +48,7 @@ yellow = ovl.Color([14, 120, 90], [33, 255, 255])
 # ROBOT CAM yellow = ovl.Color([18, 140, 50], [36, 255, 255])
 
 # Config the purple range for cube detection
-purple = ovl.Color([120, 70, 45], [180, 255, 255])
+purple = ovl.Color([110, 70, 45], [160, 255, 255])
 
 # Set the ovl director
 director = ovl.Director(directing_function=ovl.xy_normalized_directions, target_selector=1, failed_detection=(-2, -2))
@@ -86,7 +87,6 @@ detect_cube_percent = ovl.Vision(camera=camera,
 
 while True:
     # Init the values for default of none (for the case nothing was detected)
-    game_piece = -1  # 0 for cone || 1 for cube
     percent_area = 0  # percent area of the camera frame of the cone/cube
 
     # Detect any cube - no in the intake with a shape and up close with area percentage
