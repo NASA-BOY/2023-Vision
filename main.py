@@ -78,11 +78,6 @@ detect_cube = ovl.Vision(camera=camera,
                          target_filters=cube_filters,
                          director=director)
 
-detect_cube_percent = ovl.Vision(camera=camera,
-                         threshold=purple,
-                         target_filters=cube_percent_filter,
-                         director=director)
-
 
 while True:
     # Init the values for default of none (for the case nothing was detected)
@@ -93,21 +88,10 @@ while True:
     frame = detect_cube.get_image()
     cubes, frame = detect_cube.detect(frame)
 
-    frame_percent = detect_cube_percent.get_image()
-    percent_cubes, frame_percent = detect_cube_percent.detect(frame_percent)
-
-    targets = cubes
-    print("hey")
-    print(len(percent_cubes))
-
     # Check if any cubes were detected
     if len(cubes) > 0:
         game_piece = 1  # 0 for cone || 1 for cube
-
-    elif len(percent_cubes) > 0:
-        game_piece = 1  # 0 for cone || 1 for cube
-        targets = percent_cubes
-        frame = frame_percent
+        targets = cubes
 
     # If no cube was detected try to detect cones and determine their state
     else:
